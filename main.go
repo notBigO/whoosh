@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"io/ioutil"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
@@ -29,11 +32,60 @@ func (n *discoveryNotifee) HandlePeerFound(info peer.AddrInfo) {
 	}
 }
 
+// loadOrCreateIdentity loads a private key from a file if it exists,
+// or generates a new one and saves it to the file. This ensures the host
+// has a stable PeerId.
+func loadOrCreateIdentity(path string) (crypto.PrivKey, error) {
+	// Check if the key file already exists.
+	if _, err := os.Stat(path); err == nil {
+		// If it exists, read the key from the file.
+		keyBytes, err := ioutil.ReadFile(path)
+		if err != nil {
+			return nil, err
+		}
+		// Unmarshal the raw bytes into a private key.
+		privKey, err := crypto.UnmarshalPrivateKey(keyBytes)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("Loaded existing private key from %s", path)
+		return privKey, nil
+	}
+
+	// If the key file does not exist, generate a new one.
+	log.Printf("Generating new private key at %s", path)
+	// Creates a new Ed25519 key pair for this host.
+	privKey, _, err := crypto.GenerateKeyPair(crypto.Ed25519, -1)
+	if err != nil {
+		return nil, err
+	}
+
+	// Marshal the private key to raw bytes.
+	keyBytes, err := crypto.MarshalPrivateKey(privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Save the key to a file with read-only permissions for the owner.
+	if err := ioutil.WriteFile(path, keyBytes, 0400); err != nil {
+		return nil, err
+	}
+
+	return privKey, nil
+}
+
 func main() {
 	ctx := context.Background()
 	var kadDHT *dht.IpfsDHT
 
+	privKey, err := loadOrCreateIdentity("whoosh_identity.key")
+	if err != nil {
+		log.Fatalf("failed to create private key: %s", err)
+	}
+
 	host, err := libp2p.New(
+		libp2p.Identity(privKey),
+
 		// listen to all available network intefaces (for now. will change later)
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1"),
 
@@ -65,8 +117,6 @@ func main() {
 		log.Printf("Error setting up mDNS: %v", err)
 	}
 
-	// bootstrap DHT
-
 	// store all bootstrapped peers.
 	bootstrapPeers := dht.DefaultBootstrapPeers
 	var wg sync.WaitGroup
@@ -85,7 +135,6 @@ func main() {
 			}
 		}()
 	}
-
 	wg.Wait()
 	log.Println("DHT Bootstrap complete.")
 
