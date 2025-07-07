@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
@@ -13,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 )
 
 // discoveryNotifee implements the mdns.Notifee interface
@@ -81,6 +83,15 @@ func main() {
 		log.Fatalf("failed to create private key: %s", err)
 	}
 
+	cm, err := connmgr.NewConnManager(
+		100,
+		400,
+		connmgr.WithGracePeriod(time.Minute),
+	)
+	if err != nil {
+		log.Fatalf("Failed to create connection manager: %v", err)
+	}
+
 	host, err := libp2p.New(
 		libp2p.Identity(privKey),
 
@@ -97,6 +108,8 @@ func main() {
 			return kadDHT, err
 		}),
 
+		libp2p.ConnectionManager(cm),
+
 		// fallback relay to access networks hidden behind NAT
 		libp2p.EnableRelayService(),
 
@@ -108,7 +121,7 @@ func main() {
 		log.Fatalf("Failed to create libp2p host: %v", err)
 	}
 
-	// we'll setup mDNS for local discovery along with DHT to get the best of both worlds (DHT + mDNS)
+	// setup mDNS for local discovery along with DHT to get the best of both worlds (DHT + mDNS)
 	// Create a custom notifee that implements the mdns.Notifee interface
 	notifee := &discoveryNotifee{host: host, ctx: ctx}
 	if err := mdns.NewMdnsService(host, "local-discovery", notifee).Start(); err != nil {
