@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
 	"log"
 	"os"
 	"sync"
@@ -38,8 +37,8 @@ func (n *discoveryNotifee) HandlePeerFound(info peer.AddrInfo) {
 func loadOrCreateIdentity(path string) (crypto.PrivKey, error) {
 	// Check if the key file already exists.
 	if _, err := os.Stat(path); err == nil {
-		// If it exists, read the key from the file.
-		keyBytes, err := ioutil.ReadFile(path)
+		// If it exists, read the key from the file using os.ReadFile.
+		keyBytes, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +53,6 @@ func loadOrCreateIdentity(path string) (crypto.PrivKey, error) {
 
 	// If the key file does not exist, generate a new one.
 	log.Printf("Generating new private key at %s", path)
-	// Creates a new Ed25519 key pair for this host.
 	privKey, _, err := crypto.GenerateKeyPair(crypto.Ed25519, -1)
 	if err != nil {
 		return nil, err
@@ -66,8 +64,8 @@ func loadOrCreateIdentity(path string) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	// Save the key to a file with read-only permissions for the owner.
-	if err := ioutil.WriteFile(path, keyBytes, 0400); err != nil {
+	// Save the key to a file with read-only permissions for the owner
+	if err := os.WriteFile(path, keyBytes, 0400); err != nil {
 		return nil, err
 	}
 
