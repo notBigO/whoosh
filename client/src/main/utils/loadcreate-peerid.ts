@@ -12,7 +12,8 @@ export async function loadOrCreatePeerId() {
     const keyBytes = await fs.readFile(peerIdPath)
     const privateKey = keys.privateKeyFromProtobuf(keyBytes)
     console.log(`Loaded existing PeerId from ${peerIdPath}`)
-    return peerIdFromPrivateKey(privateKey)
+    const peerId = peerIdFromPrivateKey(privateKey)
+    return { peerId, privateKey }
   } catch (error: unknown) {
     // if existing file not found, create a new one
     if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
@@ -23,7 +24,8 @@ export async function loadOrCreatePeerId() {
       await fs.mkdir(path.dirname(peerIdPath), { recursive: true })
       await fs.writeFile(peerIdPath, privateKeyBytes)
 
-      return peerIdFromPrivateKey(privateKey)
+      const peerId = peerIdFromPrivateKey(privateKey)
+      return { peerId, privateKey }
     }
     throw error
   }
