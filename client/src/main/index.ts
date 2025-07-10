@@ -1,10 +1,49 @@
-import { app, Tray, BrowserWindow, nativeImage } from 'electron'
+import { app, Tray, BrowserWindow, nativeImage, ipcMain } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import path from 'path'
+import { createNode } from './libp2p/node'
 
 // declaring in global scope so they aren't garbage collected when 'createWindow' function finishes.
 let tray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
+
+let isConnected = false
+
+async function startLibp2p() {
+  try {
+    const libp2pNode = await createNode()
+    console.log('libp2p node started:', libp2pNode.peerId.toString())
+
+    // Notify renderer about initial connection state
+    if (mainWindow?.webContents?.isLoading()) {
+      mainWindow.webContents.once('did-finish-load', () => {
+        mainWindow?.webContents.send('connection-status-update', { isConnected })
+      })
+    } else {
+      mainWindow?.webContents.send('connection-status-update', { isConnected })
+    }
+
+    // Update status on peer connect
+    libp2pNode.addEventListener('peer:connect', () => {
+      isConnected = true
+      if (mainWindow?.webContents?.isLoading()) {
+        mainWindow.webContents.once('did-finish-load', () => {
+          mainWindow?.webContents.send('connection-status-update', { isConnected })
+        })
+      } else {
+        mainWindow?.webContents.send('connection-status-update', { isConnected })
+      }
+    })
+
+    // Update status on peer disconnect
+    libp2pNode.addEventListener('peer:disconnect', () => {
+      isConnected = false
+      mainWindow?.webContents.send('connection-status-update', { isConnected })
+    })
+  } catch (error) {
+    console.error('Failed to start libp2p node:', error)
+  }
+}
 
 // function to create the main popup window
 function createWindow() {
@@ -17,7 +56,7 @@ function createWindow() {
     resizable: false,
     fullscreenable: false,
     webPreferences: {
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../preload/index.mjs'),
       sandbox: false
     }
   })
@@ -69,9 +108,15 @@ const showWindow = () => {
   mainWindow.focus()
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  ipcMain.handle('get-connection-status', () => {
+    return { isConnected }
+  })
+
   createWindow()
   createTray()
+
+  await startLibp2p()
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

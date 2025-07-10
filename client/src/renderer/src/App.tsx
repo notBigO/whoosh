@@ -4,9 +4,15 @@ function App() {
   const [isConnected, setIsConnected] = useState(false)
 
   useEffect(() => {
-    setTimeout(() => {
-      setIsConnected(true)
-    }, 2000)
+    if (!window.api) return
+
+    window.api.getConnectionStatus().then(({ isConnected }) => setIsConnected(isConnected))
+
+    const unsubscribe = window.api.onConnectionStatusUpdate(({ isConnected }) => {
+      setIsConnected(isConnected)
+    })
+
+    return () => unsubscribe()
   }, [])
 
   return (

@@ -11,10 +11,13 @@ import { ping } from '@libp2p/ping'
 import { loadOrCreatePeerId } from '../utils/loadcreate-peerid'
 
 const bootstrapPeers = [
-  '/ip4/192.168.1.6/tcp/4002/ws/p2p/12D3KooWR13zPWFWff6uBDqJY74da8NSR2yVmYqYW1WgGLhQ8nfy'
+  '/ip4/127.0.0.1/tcp/4002/ws/p2p/12D3KooWR13zPWFWff6uBDqJY74da8NSR2yVmYqYW1WgGLhQ8nfy'
 ]
 
 export async function createNode() {
+  console.log('Creating libp2p node...')
+  console.log('Bootstrap peers:', bootstrapPeers)
+
   // load or create a persistent private key (peerId)
   const { privateKey } = await loadOrCreatePeerId()
 
@@ -23,7 +26,7 @@ export async function createNode() {
     privateKey,
     transports: [webSockets()],
     addresses: {
-      listen: ['/ip4/0.0.0.0/tcp/0']
+      listen: ['/ip4/0.0.0.0/tcp/0/ws']
     },
     connectionEncrypters: [noise()],
     streamMuxers: [

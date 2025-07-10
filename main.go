@@ -10,7 +10,9 @@ import (
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
@@ -116,10 +118,29 @@ func main() {
 		// enable hole punching as another mechanism
 		libp2p.EnableHolePunching(),
 	)
-
 	if err != nil {
 		log.Fatalf("Failed to create libp2p host: %v", err)
 	}
+
+	defer host.Close()
+
+	sub, err := host.EventBus().Subscribe(new(event.EvtPeerConnectednessChanged))
+	if err != nil {
+		log.Fatalf("Failed to subscribe to event bus: %v", err)
+	}
+	defer sub.Close()
+
+	go func() {
+		for e := range sub.Out() {
+			evt := e.(event.EvtPeerConnectednessChanged)
+			switch evt.Connectedness {
+			case network.Connected:
+				log.Printf("✅ Peer Connected: %s", evt.Peer)
+			case network.NotConnected:
+				log.Printf("❌ Peer Disconnected: %s", evt.Peer)
+			}
+		}
+	}()
 
 	// setup mDNS for local discovery along with DHT to get the best of both worlds (DHT + mDNS)
 	// Create a custom notifee that implements the mdns.Notifee interface
@@ -155,7 +176,6 @@ func main() {
 	for _, addr := range host.Addrs() {
 		log.Printf("    - %s/p2p/%s", addr, host.ID())
 	}
-	log.Println("Node is ready. Press Ctrl+C to stop.")
 
 	// Keep the program running
 	select {}
