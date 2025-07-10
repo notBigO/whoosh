@@ -10,7 +10,7 @@ import { ping } from '@libp2p/ping'
 
 import { loadOrCreatePeerId } from '../utils/loadcreate-peerid'
 
-const bootstrapPeers = [
+export const bootstrapPeers = [
   '/ip4/127.0.0.1/tcp/4002/ws/p2p/12D3KooWR13zPWFWff6uBDqJY74da8NSR2yVmYqYW1WgGLhQ8nfy'
 ]
 

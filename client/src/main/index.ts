@@ -1,47 +1,51 @@
 import { app, Tray, BrowserWindow, nativeImage, ipcMain } from 'electron'
 import { is } from '@electron-toolkit/utils'
 import path from 'path'
-import { createNode } from './libp2p/node'
+import { bootstrapPeers, createNode } from './libp2p/node'
+import { Libp2p } from 'libp2p'
+import { peerIdFromString } from '@libp2p/peer-id'
 
 // declaring in global scope so they aren't garbage collected when 'createWindow' function finishes.
 let tray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
+let libp2pNode: Libp2p | null = null
 
-let isConnected = false
+const WHOOSH_PROTOCOL = '/whoosh/client-hello/1.0'
 
 async function startLibp2p() {
   try {
-    const libp2pNode = await createNode()
+    libp2pNode = await createNode()
     console.log('libp2p node started:', libp2pNode.peerId.toString())
 
-    // Notify renderer about initial connection state
-    if (mainWindow?.webContents?.isLoading()) {
-      mainWindow.webContents.once('did-finish-load', () => {
-        mainWindow?.webContents.send('connection-status-update', { isConnected })
-      })
-    } else {
-      mainWindow?.webContents.send('connection-status-update', { isConnected })
-    }
+    libp2pNode.addEventListener('peer:connect', async (evt) => {
+      const connectedPeerId = evt.detail
+      const bootstrapPeerId = peerIdFromString(bootstrapPeers[0].split('/p2p/')[1])
 
-    // Update status on peer connect
-    libp2pNode.addEventListener('peer:connect', () => {
-      isConnected = true
-      if (mainWindow?.webContents?.isLoading()) {
-        mainWindow.webContents.once('did-finish-load', () => {
-          mainWindow?.webContents.send('connection-status-update', { isConnected })
-        })
-      } else {
-        mainWindow?.webContents.send('connection-status-update', { isConnected })
+      if (connectedPeerId.equals(bootstrapPeerId)) {
+        const stream = await libp2pNode?.dialProtocol(connectedPeerId, WHOOSH_PROTOCOL)
+        const encoder = new TextEncoder()
+
+        await stream?.sink([encoder.encode('Hello from Whoosh Client')])
+        mainWindow?.webContents.send('connection-status-update', { isConnected: true })
+        await stream?.close()
       }
     })
 
-    // Update status on peer disconnect
     libp2pNode.addEventListener('peer:disconnect', () => {
-      isConnected = false
-      mainWindow?.webContents.send('connection-status-update', { isConnected })
+      mainWindow?.webContents.send('connection-status-update', { isConnected: false })
+    })
+
+    // send inital state to renderer (UI)
+    mainWindow?.webContents.on('did-finish-load', () => {
+      mainWindow?.webContents.send('connection-status-update', {
+        //@ts-ignore
+        isConnected: libp2pNode.getConnections().length > 0
+      })
+      //@ts-ignore
+      mainWindow?.webContents.send('peer-id-update', libp2pNode.peerId.toString())
     })
   } catch (error) {
-    console.error('Failed to start libp2p node:', error)
+    console.error('❌ Failed to start libp2p node:', error)
   }
 }
 
@@ -110,7 +114,11 @@ const showWindow = () => {
 
 app.whenReady().then(async () => {
   ipcMain.handle('get-connection-status', () => {
-    return { isConnected }
+    return { isConnected: libp2pNode ? libp2pNode.getConnections().length > 0 : false }
+  })
+
+  ipcMain.handle('get-peer-id', () => {
+    return libp2pNode ? libp2pNode.peerId.toString() : 'Initializing...'
   })
 
   createWindow()

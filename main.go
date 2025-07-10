@@ -10,14 +10,17 @@ import (
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/event"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/core/protocol"
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 )
+
+// custom protocol to differentiate between actual client peers and bootstrap peers (handshake initiation)
+const whooshClientProtocol = protocol.ID("/whoosh/client-hello/1.0")
 
 // discoveryNotifee implements the mdns.Notifee interface
 type discoveryNotifee struct {
@@ -76,6 +79,22 @@ func loadOrCreateIdentity(path string) (crypto.PrivKey, error) {
 	return privKey, nil
 }
 
+// called whenever a peer opens a stream using our custom protocol
+func handleWhooshClientStream(s network.Stream) {
+	log.Printf("Whoosh client identified: %s", s.Conn().RemotePeer())
+
+	// we'll perform a simple handshake i.e, just read their message and close
+	buf := make([]byte, 256)
+	n, err := s.Read(buf)
+	if err != nil {
+		log.Printf("Error reading from client stream: %v", err)
+	} else {
+		log.Printf("Client says: %s", string(buf[:n]))
+	}
+
+	s.Close()
+}
+
 func main() {
 	ctx := context.Background()
 	var kadDHT *dht.IpfsDHT
@@ -121,26 +140,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create libp2p host: %v", err)
 	}
-
 	defer host.Close()
 
-	sub, err := host.EventBus().Subscribe(new(event.EvtPeerConnectednessChanged))
-	if err != nil {
-		log.Fatalf("Failed to subscribe to event bus: %v", err)
-	}
-	defer sub.Close()
-
-	go func() {
-		for e := range sub.Out() {
-			evt := e.(event.EvtPeerConnectednessChanged)
-			switch evt.Connectedness {
-			case network.Connected:
-				log.Printf("✅ Peer Connected: %s", evt.Peer)
-			case network.NotConnected:
-				log.Printf("❌ Peer Disconnected: %s", evt.Peer)
-			}
-		}
-	}()
+	// setup the stream handler for our custom protocol
+	host.SetStreamHandler(whooshClientProtocol, handleWhooshClientStream)
 
 	// setup mDNS for local discovery along with DHT to get the best of both worlds (DHT + mDNS)
 	// Create a custom notifee that implements the mdns.Notifee interface
