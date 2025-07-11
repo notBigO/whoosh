@@ -57,9 +57,9 @@ export class NetworkService extends EventEmitter {
       if (stream) {
         const encoder = new TextEncoder()
         const decoder = new TextDecoder()
-
+        let handshakeMessage = `Hello from Whoosh Client - ${os.hostname}`
         // Send handshake message
-        await stream.sink([encoder.encode('Hello from Whoosh Client')])
+        await stream.sink([encoder.encode(handshakeMessage)])
         console.log('Sent handshake message to backend')
 
         // Read the response
@@ -94,7 +94,7 @@ export class NetworkService extends EventEmitter {
 
     // We only care about other Whoosh clients, not random DHT nodes
     if (protocols.includes(WHOOSH_PROTOCOL)) {
-      console.log(`Identified Whoosh peer: ${peerId.toString()} as ${agentVersion}`)
+      console.log(`Identified Whoosh peer: ${os.hostname}`)
 
       // Don't try to handshake with the backend server again
       if (!peerId.equals(bootstrapPeerId)) {

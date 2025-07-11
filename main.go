@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -94,17 +95,15 @@ func handleWhooshClientStream(s network.Stream) {
 
 		if n > 0 {
 			msg := string(buf[:n])
-			log.Printf("Client handshake successful: %s", s.Conn().RemotePeer())
-			log.Printf("Handshake message: %s", msg)
+			whooshClientDeviceName := strings.Split(msg, " - ")[1]
 
 			// Send a response back to acknowledge the handshake
-			response := "Hello from Whoosh Backend - handshake complete"
+			response := "Hello from Whoosh Backend, " + whooshClientDeviceName
 			if _, err := s.Write([]byte(response)); err != nil {
 				log.Printf("❌ Error sending handshake response to %s: %v", s.Conn().RemotePeer(), err)
 				return
 			}
 
-			log.Printf("Handshake response sent to %s", s.Conn().RemotePeer())
 		}
 
 		// Wait for the client to close the stream or handle additional messages
