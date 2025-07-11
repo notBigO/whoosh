@@ -81,18 +81,51 @@ func loadOrCreateIdentity(path string) (crypto.PrivKey, error) {
 
 // called whenever a peer opens a stream using our custom protocol
 func handleWhooshClientStream(s network.Stream) {
-	log.Printf("Whoosh client identified: %s", s.Conn().RemotePeer())
+	go func() {
+		defer s.Close()
 
-	// we'll perform a simple handshake i.e, just read their message and close
-	buf := make([]byte, 256)
-	n, err := s.Read(buf)
-	if err != nil {
-		log.Printf("Error reading from client stream: %v", err)
-	} else {
-		log.Printf("Client says: %s", string(buf[:n]))
-	}
+		// Read the handshake message from the client
+		buf := make([]byte, 256)
+		n, err := s.Read(buf)
+		if err != nil {
+			log.Printf("❌ Error reading handshake from %s: %v", s.Conn().RemotePeer(), err)
+			return
+		}
 
-	s.Close()
+		if n > 0 {
+			msg := string(buf[:n])
+			log.Printf("Client handshake successful: %s", s.Conn().RemotePeer())
+			log.Printf("Handshake message: %s", msg)
+
+			// Send a response back to acknowledge the handshake
+			response := "Hello from Whoosh Backend - handshake complete"
+			if _, err := s.Write([]byte(response)); err != nil {
+				log.Printf("❌ Error sending handshake response to %s: %v", s.Conn().RemotePeer(), err)
+				return
+			}
+
+			log.Printf("Handshake response sent to %s", s.Conn().RemotePeer())
+		}
+
+		// Wait for the client to close the stream or handle additional messages
+		for {
+			n, err := s.Read(buf)
+			if err != nil {
+				if err.Error() == "EOF" {
+					log.Printf("Client %s completed handshake and closed connection gracefully", s.Conn().RemotePeer())
+				} else {
+					log.Printf("❌ Error reading from %s: %v", s.Conn().RemotePeer(), err)
+				}
+				return
+			}
+
+			if n > 0 {
+				// Handle any additional messages if needed
+				msg := string(buf[:n])
+				log.Printf("Additional message from %s: %s", s.Conn().RemotePeer(), msg)
+			}
+		}
+	}()
 }
 
 func main() {

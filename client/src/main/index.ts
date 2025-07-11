@@ -9,6 +9,7 @@ import { peerIdFromString } from '@libp2p/peer-id'
 let tray: Tray | null = null
 let mainWindow: BrowserWindow | null = null
 let libp2pNode: Libp2p | null = null
+let isConnectedToBootstrap = false
 
 const WHOOSH_PROTOCOL = '/whoosh/client-hello/1.0'
 
@@ -22,24 +23,75 @@ async function startLibp2p() {
       const bootstrapPeerId = peerIdFromString(bootstrapPeers[0].split('/p2p/')[1])
 
       if (connectedPeerId.equals(bootstrapPeerId)) {
-        const stream = await libp2pNode?.dialProtocol(connectedPeerId, WHOOSH_PROTOCOL)
-        const encoder = new TextEncoder()
+        try {
+          console.log('Initiating handshake with backend...')
+          const stream = await libp2pNode?.dialProtocol(connectedPeerId, WHOOSH_PROTOCOL)
 
-        await stream?.sink([encoder.encode('Hello from Whoosh Client')])
-        mainWindow?.webContents.send('connection-status-update', { isConnected: true })
-        await stream?.close()
+          if (stream) {
+            const encoder = new TextEncoder()
+            const decoder = new TextDecoder()
+
+            // Send handshake message
+            await stream.sink([encoder.encode('Hello from Whoosh Client')])
+            console.log('Sent handshake message to backend')
+
+            // Read the response
+            try {
+              const response = await stream.source.next()
+              if (!response.done && response.value) {
+                const responseText = decoder.decode(response.value.subarray())
+                console.log('Received handshake response:', responseText)
+                console.log('Handshake completed successfully')
+
+                isConnectedToBootstrap = true
+                mainWindow?.webContents.send('connection-status-update', { isConnected: true })
+              }
+            } catch (readError) {
+              console.log('Handshake sent, backend acknowledged (stream closed)')
+              isConnectedToBootstrap = false
+              mainWindow?.webContents.send('connection-status-update', { isConnected: false })
+            }
+
+            await stream?.close()
+          }
+        } catch (error) {
+          console.error('❌ Handshake failed:', error)
+          isConnectedToBootstrap = false
+          mainWindow?.webContents.send('connection-status-update', { isConnected: false })
+        }
+      } else {
+        console.log(`(Ignoring connection to random peer: ${connectedPeerId.toString()})`)
       }
     })
 
-    libp2pNode.addEventListener('peer:disconnect', () => {
-      mainWindow?.webContents.send('connection-status-update', { isConnected: false })
+    libp2pNode.addEventListener('peer:disconnect', (evt) => {
+      const disconnectedPeerId = evt.detail
+      const bootstrapPeerId = peerIdFromString(bootstrapPeers[0].split('/p2p/')[1])
+
+      // ONLY update the UI if we have disconnected from our specific backend server.
+      if (disconnectedPeerId.equals(bootstrapPeerId)) {
+        console.log('Disconnected from backend server.')
+        isConnectedToBootstrap = false
+        mainWindow?.webContents.send('connection-status-update', { isConnected: false })
+
+        // Attempt to reconnect after a delay
+        setTimeout(async () => {
+          try {
+            console.log('Attempting to reconnect to backend server...')
+
+            await libp2pNode?.dial(bootstrapPeerId)
+            console.log('Reconnection attempt completed')
+          } catch (error) {
+            console.log('Reconnection failed, will retry again later:', error)
+          }
+        }, 3000)
+      }
     })
 
     // send inital state to renderer (UI)
     mainWindow?.webContents.on('did-finish-load', () => {
       mainWindow?.webContents.send('connection-status-update', {
-        //@ts-ignore
-        isConnected: libp2pNode.getConnections().length > 0
+        isConnected: isConnectedToBootstrap
       })
       //@ts-ignore
       mainWindow?.webContents.send('peer-id-update', libp2pNode.peerId.toString())
@@ -114,7 +166,7 @@ const showWindow = () => {
 
 app.whenReady().then(async () => {
   ipcMain.handle('get-connection-status', () => {
-    return { isConnected: libp2pNode ? libp2pNode.getConnections().length > 0 : false }
+    return { isConnected: isConnectedToBootstrap }
   })
 
   ipcMain.handle('get-peer-id', () => {
