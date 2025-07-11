@@ -8,6 +8,12 @@ const api = {
     ipcRenderer.on('connection-status-update', (_, status) => callback(status))
 
     return () => ipcRenderer.removeAllListeners('connection-status-update')
+  },
+  onPeerFound: (callback) => {
+    const listener = (_, peer) => callback(peer)
+    ipcRenderer.on('peer-found', listener)
+
+    return () => ipcRenderer.removeListener('peer-found', listener)
   }
 }
 

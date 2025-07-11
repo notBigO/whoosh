@@ -181,7 +181,7 @@ func main() {
 	// setup mDNS for local discovery along with DHT to get the best of both worlds (DHT + mDNS)
 	// Create a custom notifee that implements the mdns.Notifee interface
 	notifee := &discoveryNotifee{host: host, ctx: ctx}
-	if err := mdns.NewMdnsService(host, "local-discovery", notifee).Start(); err != nil {
+	if err := mdns.NewMdnsService(host, "whoosh-local", notifee).Start(); err != nil {
 		log.Printf("Error setting up mDNS: %v", err)
 	}
 

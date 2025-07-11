@@ -7,45 +7,83 @@ import { kadDHT } from '@libp2p/kad-dht'
 import { mdns } from '@libp2p/mdns'
 import { identify } from '@libp2p/identify'
 import { ping } from '@libp2p/ping'
+import * as os from 'os'
 
 import { loadOrCreatePeerId } from '../utils/loadcreate-peerid'
+import { APP_CONFIG } from '../constants/config'
 
-export const bootstrapPeers = [
-  '/ip4/127.0.0.1/tcp/4002/ws/p2p/12D3KooWR13zPWFWff6uBDqJY74da8NSR2yVmYqYW1WgGLhQ8nfy'
-]
+export const { WHOOSH_PROTOCOL } = APP_CONFIG.NETWORK
+export const { BOOTSTRAP_PEERS } = APP_CONFIG
 
 export async function createNode() {
   console.log('Creating libp2p node...')
-  console.log('Bootstrap peers:', bootstrapPeers)
+  console.log('Bootstrap peers:', BOOTSTRAP_PEERS)
 
-  // load or create a persistent private key (peerId)
+  // Load or create a persistent private key (peerId)
   const { privateKey } = await loadOrCreatePeerId()
 
-  // create a libp2p host
+  // Get device name for identification
+  const deviceName = `Whoosh-${os.hostname() || 'Unknown'}`
+
+  // Create a libp2p host
   const node = await createLibp2p({
     privateKey,
+    nodeInfo: {
+      userAgent: deviceName
+    },
     transports: [webSockets()],
     addresses: {
       listen: ['/ip4/0.0.0.0/tcp/0/ws']
     },
     connectionEncrypters: [noise()],
-    streamMuxers: [
-      yamux() // multiplex streams over a single connection
-    ],
+    streamMuxers: [yamux()],
     peerDiscovery: [
       bootstrap({
-        list: bootstrapPeers
+        list: BOOTSTRAP_PEERS
       }),
-      mdns() // for discovering peers on same local network
+      mdns({
+        interval: APP_CONFIG.NETWORK.MDNS_INTERVAL,
+        serviceTag: APP_CONFIG.NETWORK.MDNS_SERVICE_TAG
+      })
     ],
     services: {
       identify: identify(),
       ping: ping(),
       dht: kadDHT({
         clientMode: true
-      }) // DHT service for peer discovery and content routing
+      })
     }
   })
 
+  // Handle incoming connections from other Whoosh clients
+  node.handle(WHOOSH_PROTOCOL, ({ stream }) => {
+    console.log('Received connection from another Whoosh client')
+    handleClientConnection(stream)
+  })
+
   return node
+}
+
+// Handle connections from other Whoosh clients
+async function handleClientConnection(stream: any) {
+  try {
+    const decoder = new TextDecoder()
+    const encoder = new TextEncoder()
+
+    // Read the handshake message
+    const response = await stream.source.next()
+    if (!response.done && response.value) {
+      const message = decoder.decode(response.value.subarray())
+      console.log('Received message from peer:', message)
+
+      // Send a response back
+      const reply = `Hello from ${os.hostname() || 'Unknown'} - ready for file sharing!`
+      await stream.sink([encoder.encode(reply)])
+      console.log('Sent response to peer')
+    }
+
+    await stream.close()
+  } catch (error) {
+    console.error('Error handling client connection:', error)
+  }
 }
