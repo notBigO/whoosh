@@ -99,13 +99,14 @@ export class NetworkService extends EventEmitter {
       // Don't try to handshake with the backend server again
       if (!peerId.equals(bootstrapPeerId)) {
         await this.performClientHandshake(peerId)
-      }
 
-      // Emit peer found event
-      this.emit('peerFound', {
-        id: peerId.toString(),
-        name: agentVersion || 'Unknown Device'
-      })
+        // Only emit peer found for actual clients (not the backend server)
+        this.emit('peerFound', {
+          id: peerId.toString(),
+          name: agentVersion || 'Unknown Device'
+        })
+      }
+      // Backend server is identified but not added to peer list for UI
     }
   }
 
