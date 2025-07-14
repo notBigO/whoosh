@@ -18,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -148,19 +149,31 @@ func main() {
 
 	host, err := libp2p.New(
 		libp2p.Identity(privKey),
+		libp2p.Transport(websocket.New),
 
 		// listen to all available network intefaces (for now. will change later)
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws"),
-
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws", "/ip4/0.0.0.0/tcp/4001"),
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
-			publicAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
+			// Add public addresses for both TCP and WebSocket
+			publicTCPAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4001")
 			if err != nil {
-				log.Printf("❌ Failed to create public multiaddr: %v", err)
-				return addrs
+				log.Printf("❌ Failed to create public TCP multiaddr: %v", err)
 			}
 
-			// You can include the default addresses too, if you want
-			return append(addrs, publicAddr)
+			publicWSAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
+			if err != nil {
+				log.Printf("❌ Failed to create public WebSocket multiaddr: %v", err)
+			}
+
+			result := addrs
+			if publicTCPAddr != nil {
+				result = append(result, publicTCPAddr)
+			}
+			if publicWSAddr != nil {
+				result = append(result, publicWSAddr)
+			}
+
+			return result
 		}),
 
 		// use DHT based routing

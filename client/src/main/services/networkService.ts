@@ -26,6 +26,7 @@ export class NetworkService extends EventEmitter {
       console.log('libp2p node started:', this.libp2pNode.peerId.toString())
 
       this.setupEventListeners()
+      await this.libp2pNode.dial(this.bootstrapPeerId)
     } catch (error) {
       console.error('❌ Failed to start libp2p node:', error)
       throw error
