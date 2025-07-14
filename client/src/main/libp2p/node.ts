@@ -17,9 +17,6 @@ export const { WHOOSH_PROTOCOL } = APP_CONFIG.NETWORK
 export const { BOOTSTRAP_PEERS } = APP_CONFIG
 
 export async function createNode() {
-  console.log('Creating libp2p node...')
-  console.log('Bootstrap peers:', BOOTSTRAP_PEERS)
-
   // Load or create a persistent private key (peerId)
   const { privateKey } = await loadOrCreatePeerId()
 
@@ -56,5 +53,32 @@ export async function createNode() {
     }
   })
 
+  node.handle(WHOOSH_PROTOCOL, ({ stream }) => {
+    handleClientConnection(stream)
+  })
+
   return node
+}
+
+async function handleClientConnection(stream: any) {
+  try {
+    const decoder = new TextDecoder()
+    const encoder = new TextEncoder()
+
+    // Read the handshake message
+    const response = await stream.source.next()
+    if (!response.done && response.value) {
+      const message = decoder.decode(response.value.subarray())
+      console.log('Received message from client peer:', message)
+
+      // Send a response back
+      const reply = `Hello from ${os.hostname() || 'Unknown'} - ready for file sharing!`
+      await stream.sink([encoder.encode(reply)])
+      console.log('Sent response to client peer')
+    }
+
+    await stream.close()
+  } catch (error) {
+    console.error('Error handling client connection:', error)
+  }
 }

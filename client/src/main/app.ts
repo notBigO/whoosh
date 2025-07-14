@@ -19,8 +19,6 @@ export class WhooshApp {
       await this.windowService.initialize()
       this.ipcService.initialize()
       await this.networkService.initialize()
-
-      console.log('Whoosh application initialized successfully')
     } catch (error) {
       console.error('Failed to initialize Whoosh application:', error)
       throw error
