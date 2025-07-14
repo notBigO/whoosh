@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { createLibp2p } from 'libp2p'
 import { webSockets } from '@libp2p/websockets'
 import { noise } from '@chainsafe/libp2p-noise'
@@ -55,35 +56,5 @@ export async function createNode() {
     }
   })
 
-  // Handle incoming connections from other Whoosh clients
-  node.handle(WHOOSH_PROTOCOL, ({ stream }) => {
-    console.log('Received connection from another Whoosh client')
-    handleClientConnection(stream)
-  })
-
   return node
-}
-
-// Handle connections from other Whoosh clients
-async function handleClientConnection(stream: any) {
-  try {
-    const decoder = new TextDecoder()
-    const encoder = new TextEncoder()
-
-    // Read the handshake message
-    const response = await stream.source.next()
-    if (!response.done && response.value) {
-      const message = decoder.decode(response.value.subarray())
-      console.log('Received message from peer:', message)
-
-      // Send a response back
-      const reply = `Hello from ${os.hostname() || 'Unknown'} - ready for file sharing!`
-      await stream.sink([encoder.encode(reply)])
-      console.log('Sent response to peer')
-    }
-
-    await stream.close()
-  } catch (error) {
-    console.error('Error handling client connection:', error)
-  }
 }

@@ -57,7 +57,7 @@ export class NetworkService extends EventEmitter {
       if (stream) {
         const encoder = new TextEncoder()
         const decoder = new TextDecoder()
-        let handshakeMessage = `Hello from Whoosh Client - ${os.hostname}`
+        const handshakeMessage = `Hello from Whoosh Client - ${os.hostname}`
         // Send handshake message
         await stream.sink([encoder.encode(handshakeMessage)])
         console.log('Sent handshake message to backend')
@@ -73,8 +73,8 @@ export class NetworkService extends EventEmitter {
             this.isConnectedToBootstrap = true
             this.emit('connectionStatusUpdate', { isConnected: true })
           }
-        } catch (readError) {
-          console.log('Handshake sent, backend acknowledged (stream closed)')
+        } catch (error) {
+          console.log('Handshake sent, backend acknowledged (stream closed): ', error)
           this.isConnectedToBootstrap = false
           this.emit('connectionStatusUpdate', { isConnected: false })
         }
