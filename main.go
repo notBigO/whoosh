@@ -138,8 +138,8 @@ func main() {
 	}
 
 	cm, err := connmgr.NewConnManager(
-		10,
-		20,
+		100,
+		400,
 		connmgr.WithGracePeriod(time.Minute),
 	)
 	if err != nil {
@@ -153,6 +153,7 @@ func main() {
 
 		// listen to all available network intefaces (for now. will change later)
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws", "/ip4/0.0.0.0/tcp/4001"),
+
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
 			// Add public addresses for both TCP and WebSocket
 			publicTCPAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4001")
