@@ -18,7 +18,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	"github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
@@ -149,7 +148,8 @@ func main() {
 
 	host, err := libp2p.New(
 		libp2p.Identity(privKey),
-		libp2p.Transport(websocket.New),
+		// Add both TCP and WebSocket transports
+		libp2p.DefaultTransports,
 
 		// listen to all available network intefaces (for now. will change later)
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws", "/ip4/0.0.0.0/tcp/4001"),

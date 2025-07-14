@@ -10,6 +10,7 @@ import { identify } from '@libp2p/identify'
 import { ping } from '@libp2p/ping'
 import * as os from 'os'
 import { tcp } from '@libp2p/tcp'
+import { all } from '@libp2p/websockets/filters'
 
 import { loadOrCreatePeerId } from '../utils/loadcreate-peerid'
 import { APP_CONFIG } from '../constants/config'
@@ -30,7 +31,12 @@ export async function createNode() {
     nodeInfo: {
       userAgent: deviceName
     },
-    transports: [webSockets(), tcp()],
+    transports: [
+      webSockets({
+        filter: all
+      }),
+      tcp()
+    ],
     addresses: {
       listen: ['/ip4/0.0.0.0/tcp/0/ws', '/ip4/0.0.0.0/tcp/0']
     },
