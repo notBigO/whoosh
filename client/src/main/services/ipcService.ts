@@ -20,9 +20,9 @@ export class IpcService {
   }
 
   private setupNetworkEventListeners(): void {
-    this.networkService.on('connectionStatusUpdate', this.handleConnectionStatusUpdate.bind(this))
-    this.networkService.on('peerFound', this.handlePeerFound.bind(this))
-    this.networkService.on('peerDisconnected', this.handlePeerDisconnected.bind(this))
+    this.networkService.on('connection-status-update', this.handleConnectionStatusUpdate.bind(this))
+    this.networkService.on('peer-found', this.handlePeerFound.bind(this))
+    this.networkService.on('peer-disconnected', this.handlePeerDisconnected.bind(this))
 
     this.windowService.on('windowReady', this.handleWindowReady.bind(this))
   }

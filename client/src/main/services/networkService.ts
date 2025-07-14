@@ -76,7 +76,7 @@ export class NetworkService extends EventEmitter {
       if (stream) {
         const encoder = new TextEncoder()
         const decoder = new TextDecoder()
-        const handshakeMessage = `Hello from Whoosh Client - ${os.hostname}`
+        const handshakeMessage = `Hello from Whoosh Client - ${os.hostname()}`
         // Send handshake message
         await stream.sink([encoder.encode(handshakeMessage)])
 
@@ -88,12 +88,12 @@ export class NetworkService extends EventEmitter {
             console.log('Received handshake response:', responseText)
 
             this.isConnectedToBootstrap = true
-            this.emit('connectionStatusUpdate', { isConnected: true })
+            this.emit('connection-status-update', { isConnected: true })
           }
         } catch (error) {
           console.log('Handshake sent, backend acknowledged (stream closed): ', error)
           this.isConnectedToBootstrap = false
-          this.emit('connectionStatusUpdate', { isConnected: false })
+          this.emit('connection-status-update', { isConnected: false })
         }
 
         await stream.close()
@@ -101,7 +101,7 @@ export class NetworkService extends EventEmitter {
     } catch (error) {
       console.error('❌ Handshake failed:', error)
       this.isConnectedToBootstrap = false
-      this.emit('connectionStatusUpdate', { isConnected: false })
+      this.emit('connection-status-update', { isConnected: false })
     }
   }
 
@@ -120,7 +120,7 @@ export class NetworkService extends EventEmitter {
         await this.performClientHandshake(peerId)
       }
 
-      this.emit('peerFound', {
+      this.emit('peer-found', {
         id: peerIdStr,
         name: agentVersion || 'Unknown Device'
       })
@@ -152,13 +152,13 @@ export class NetworkService extends EventEmitter {
     if (disconnectedPeerId.equals(this.bootstrapPeerId)) {
       console.log('Disconnected from backend server.')
       this.isConnectedToBootstrap = false
-      this.emit('connectionStatusUpdate', { isConnected: false })
+      this.emit('connection-status-update', { isConnected: false })
 
       // Attempt to reconnect after a delay
       this.scheduleReconnect()
     } else {
       console.log(`Client disconnected: ${disconnectedPeerId.toString()}`)
-      this.emit('peerDisconnected', { id: disconnectedPeerId.toString() })
+      this.emit('peer-disconnected', { id: disconnectedPeerId.toString() })
     }
   }
 
