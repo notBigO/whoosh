@@ -18,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	ma "github.com/multiformats/go-multiaddr"
 )
 
 // custom protocol to differentiate between actual client peers and bootstrap peers (handshake initiation)
@@ -149,10 +150,18 @@ func main() {
 		libp2p.Identity(privKey),
 
 		// listen to all available network intefaces (for now. will change later)
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1"),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1", "/ip4/0.0.0.0/tcp/4002/ws"),
 
-		// websocket support for web browsers
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws"),
+		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
+			publicAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
+			if err != nil {
+				log.Printf("❌ Failed to create public multiaddr: %v", err)
+				return addrs
+			}
+
+			// You can include the default addresses too, if you want
+			return append(addrs, publicAddr)
+		}),
 
 		// use DHT based routing
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
