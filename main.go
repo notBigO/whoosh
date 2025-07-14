@@ -138,8 +138,8 @@ func main() {
 	}
 
 	cm, err := connmgr.NewConnManager(
-		100,
-		400,
+		10,
+		20,
 		connmgr.WithGracePeriod(time.Minute),
 	)
 	if err != nil {
@@ -150,7 +150,7 @@ func main() {
 		libp2p.Identity(privKey),
 
 		// listen to all available network intefaces (for now. will change later)
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0", "/ip4/0.0.0.0/udp/0/quic-v1", "/ip4/0.0.0.0/tcp/4002/ws"),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws"),
 
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
 			publicAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
