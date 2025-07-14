@@ -148,18 +148,11 @@ func main() {
 
 	host, err := libp2p.New(
 		libp2p.Identity(privKey),
-		// Add both TCP and WebSocket transports
-		libp2p.DefaultTransports,
 
 		// listen to all available network intefaces (for now. will change later)
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws", "/ip4/0.0.0.0/tcp/4001"),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws"),
 
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
-			// Add public addresses for both TCP and WebSocket
-			publicTCPAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4001")
-			if err != nil {
-				log.Printf("❌ Failed to create public TCP multiaddr: %v", err)
-			}
 
 			publicWSAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
 			if err != nil {
@@ -167,9 +160,7 @@ func main() {
 			}
 
 			result := addrs
-			if publicTCPAddr != nil {
-				result = append(result, publicTCPAddr)
-			}
+
 			if publicWSAddr != nil {
 				result = append(result, publicWSAddr)
 			}
