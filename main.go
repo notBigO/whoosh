@@ -153,19 +153,13 @@ func main() {
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws"),
 
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
-
-			publicWSAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
+			publicAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
 			if err != nil {
-				log.Printf("❌ Failed to create public WebSocket multiaddr: %v", err)
+				log.Printf("❌ Failed to create public multiaddr: %v", err)
+				return addrs
 			}
-
-			result := addrs
-
-			if publicWSAddr != nil {
-				result = append(result, publicWSAddr)
-			}
-
-			return result
+			log.Printf("Announcing address: %s", publicAddr)
+			return []ma.Multiaddr{publicAddr}
 		}),
 
 		// use DHT based routing
