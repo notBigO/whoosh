@@ -150,7 +150,7 @@ func main() {
 		libp2p.Identity(privKey),
 
 		// listen to all available network intefaces (for now. will change later)
-		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws"),
+		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws", "/ip4/0.0.0.0/tcp/0"),
 
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
 			publicAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
