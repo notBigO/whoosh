@@ -158,7 +158,7 @@ func main() {
 				log.Printf("❌ Failed to create public multiaddr: %v", err)
 				return addrs
 			}
-			log.Printf("Announcing address: %s", publicAddr)
+
 			return []ma.Multiaddr{publicAddr}
 		}),
 
