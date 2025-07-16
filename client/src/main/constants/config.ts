@@ -16,6 +16,7 @@ export const APP_CONFIG = {
 
   BOOTSTRAP_PEERS: [
     '/ip4/13.235.69.64/tcp/4002/ws/p2p/12D3KooWNQGVjxg7k2CqiqMSd6pcu2dNjpKaZJh5nc3vNkAdrCp5'
+    // '/ip4/127.0.0.1/tcp/4002/ws/p2p/12D3KooWR13zPWFWff6uBDqJY74da8NSR2yVmYqYW1WgGLhQ8nfy'
   ]
 }
 

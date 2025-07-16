@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
-	ws "github.com/libp2p/go-ws-transport"
+	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 )
 

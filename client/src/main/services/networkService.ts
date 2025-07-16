@@ -26,7 +26,6 @@ export class NetworkService extends EventEmitter {
       console.log('libp2p node started:', this.libp2pNode.peerId.toString())
 
       this.setupEventListeners()
-      await this.libp2pNode.dial(this.bootstrapPeerId)
     } catch (error) {
       console.error('❌ Failed to start libp2p node:', error)
       throw error
@@ -44,6 +43,7 @@ export class NetworkService extends EventEmitter {
 
   private async handlePeerConnect(evt: any): Promise<void> {
     const connectedPeerId = evt.detail
+    console.log('Connected PEER ID: ', connectedPeerId)
 
     if (connectedPeerId.equals(this.bootstrapPeerId)) {
       await this.performBackendHandshake(connectedPeerId)
@@ -54,12 +54,11 @@ export class NetworkService extends EventEmitter {
 
   private async handlePeerDiscovery(evt: any): Promise<void> {
     const discoveredPeerId = evt.detail.id
+    console.log('Discovered PEER ID: ', discoveredPeerId)
     const discoveredIdStr = discoveredPeerId.toString()
+    console.log('Discovered PEER ID STRING: ', discoveredIdStr)
 
-    if (
-      !this.clientPeerIds.has(discoveredIdStr) &&
-      !discoveredPeerId.equals(this.bootstrapPeerId)
-    ) {
+    if (!this.clientPeerIds.has(discoveredIdStr)) {
       try {
         console.log('Dialing discovered peer: ', discoveredIdStr)
         await this.libp2pNode?.dial(discoveredPeerId)
@@ -71,6 +70,7 @@ export class NetworkService extends EventEmitter {
   }
 
   private async performBackendHandshake(peerId: any): Promise<void> {
+    console.log('Performing backend handshake')
     try {
       const stream = await this.libp2pNode?.dialProtocol(peerId, WHOOSH_PROTOCOL)
 
@@ -108,6 +108,7 @@ export class NetworkService extends EventEmitter {
 
   private async handlePeerIdentify(evt: any): Promise<void> {
     const { peerId, protocols, agentVersion } = evt.detail
+    console.log('peer identified: ', peerId)
     const peerIdStr = peerId.toString()
 
     if (!protocols.includes(WHOOSH_PROTOCOL)) {
