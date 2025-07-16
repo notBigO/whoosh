@@ -181,11 +181,6 @@ func main() {
 			// Add public addresses
 			filteredAddrs = append(filteredAddrs, publicAddrs...)
 
-			log.Printf("🌐 Advertising addresses:")
-			for _, addr := range filteredAddrs {
-				log.Printf("    - %s", addr)
-			}
-
 			return filteredAddrs
 		}),
 
