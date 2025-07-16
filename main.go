@@ -18,6 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/routing"
 	mdns "github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
+	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
 	ws "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -149,19 +150,43 @@ func main() {
 
 	host, err := libp2p.New(
 		libp2p.Identity(privKey),
+		libp2p.Transport(tcp.NewTCPTransport),
 		libp2p.Transport(ws.New),
 
 		// listen to all available network intefaces (for now. will change later)
 		libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/4002/ws", "/ip4/0.0.0.0/tcp/0"),
 
 		libp2p.AddrsFactory(func(addrs []ma.Multiaddr) []ma.Multiaddr {
-			publicAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws")
-			if err != nil {
-				log.Printf("❌ Failed to create public multiaddr: %v", err)
-				return addrs
+			var publicAddrs []ma.Multiaddr
+
+			// Add the public WebSocket address
+			if wsAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4002/ws"); err == nil {
+				publicAddrs = append(publicAddrs, wsAddr)
 			}
 
-			return append(addrs, publicAddr)
+			// Add the public TCP address for DHT
+			if tcpAddr, err := ma.NewMultiaddr("/ip4/13.235.69.64/tcp/4001"); err == nil {
+				publicAddrs = append(publicAddrs, tcpAddr)
+			}
+
+			// Filter out local addresses and add public ones
+			var filteredAddrs []ma.Multiaddr
+			for _, addr := range addrs {
+				// Keep localhost addresses for local testing
+				if strings.Contains(addr.String(), "127.0.0.1") {
+					filteredAddrs = append(filteredAddrs, addr)
+				}
+			}
+
+			// Add public addresses
+			filteredAddrs = append(filteredAddrs, publicAddrs...)
+
+			log.Printf("🌐 Advertising addresses:")
+			for _, addr := range filteredAddrs {
+				log.Printf("    - %s", addr)
+			}
+
+			return filteredAddrs
 		}),
 
 		// use DHT based routing
